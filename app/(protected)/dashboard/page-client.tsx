@@ -11,12 +11,6 @@ import { ScheduleItemForm } from "@/components/forms/schedule-item-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { RealtimeQuerySync } from "@/components/providers/realtime-query-sync";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { CORE_HABITS, JANE_STREET_TARGET_DATE } from "@/lib/constants";
 import {
   useDashboardData,
@@ -65,6 +59,9 @@ export function DashboardClient({
 
   const countdownDays = calculateCountdownDays();
   const completedToday = Object.values(todayChecklist).filter(Boolean).length - 1;
+  const scheduleEditorTitle = editingScheduleItem
+    ? "Edit schedule block"
+    : "Add schedule block";
   const timetableItems = useMemo(() => {
     const recurring = dashboard.schedule.map((item) => ({
       id: item.id,
@@ -204,6 +201,53 @@ export function DashboardClient({
             </Button>
           }
         >
+          {scheduleDialogOpen ? (
+            <div className="rounded-3xl border border-white/8 bg-black/20 p-4">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-indigo-200/80">
+                    Schedule editor
+                  </p>
+                  <h3 className="mt-2 text-base font-medium text-white">
+                    {scheduleEditorTitle}
+                  </h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setScheduleDialogOpen(false);
+                    setEditingScheduleItem(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              <ScheduleItemForm
+                defaultValues={{
+                  schedule_type: "dashboard",
+                  weekday: editingScheduleItem?.weekday ?? new Date().getDay(),
+                  title: editingScheduleItem?.title ?? "",
+                  details: editingScheduleItem?.details ?? "",
+                  time_label: editingScheduleItem?.time_label ?? "",
+                  category: editingScheduleItem?.category ?? "study",
+                  position:
+                    editingScheduleItem?.position ??
+                    Math.max(dashboard.schedule.length + 1, 1),
+                }}
+                onSubmit={async (values) => {
+                  await saveScheduleItem.mutateAsync({
+                    id: editingScheduleItem?.id,
+                    ...values,
+                  });
+                  setScheduleDialogOpen(false);
+                  setEditingScheduleItem(null);
+                }}
+              />
+            </div>
+          ) : null}
+
           <div className="space-y-3">
             {timetableItems.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 p-6 text-sm text-muted-foreground">
@@ -324,37 +368,6 @@ export function DashboardClient({
           </div>
         </SectionCard>
       </div>
-
-      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
-        <DialogContent className="max-w-xl border border-white/10 bg-popover">
-          <DialogHeader>
-            <DialogTitle>
-              {editingScheduleItem ? "Edit schedule block" : "Add schedule block"}
-            </DialogTitle>
-          </DialogHeader>
-          <ScheduleItemForm
-            defaultValues={{
-              schedule_type: "dashboard",
-              weekday: editingScheduleItem?.weekday ?? new Date().getDay(),
-              title: editingScheduleItem?.title ?? "",
-              details: editingScheduleItem?.details ?? "",
-              time_label: editingScheduleItem?.time_label ?? "",
-              category: editingScheduleItem?.category ?? "study",
-              position:
-                editingScheduleItem?.position ??
-                Math.max(dashboard.schedule.length + 1, 1),
-            }}
-            onSubmit={async (values) => {
-              await saveScheduleItem.mutateAsync({
-                id: editingScheduleItem?.id,
-                ...values,
-              });
-              setScheduleDialogOpen(false);
-              setEditingScheduleItem(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

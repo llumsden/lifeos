@@ -110,6 +110,9 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
   }, [study.tasks]);
 
   const scheduledTasksCount = study.tasks.filter((task) => Boolean(task.scheduled_for)).length;
+  const promptEditorTitle = editingPrompt
+    ? "Edit study prompt"
+    : "Add study prompt";
 
   return (
     <div className="space-y-8">
@@ -186,6 +189,48 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
           </Button>
         }
       >
+        {promptDialogOpen ? (
+          <div className="rounded-3xl border border-white/8 bg-black/20 p-4">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-indigo-200/80">
+                  Prompt editor
+                </p>
+                <h3 className="mt-2 text-base font-medium text-white">
+                  {promptEditorTitle}
+                </h3>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setPromptDialogOpen(false);
+                  setEditingPrompt(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+
+            <StudyAIPromptForm
+              defaultValues={{
+                label: editingPrompt?.label ?? "",
+                prompt: editingPrompt?.prompt ?? "",
+                position:
+                  editingPrompt?.position ?? Math.max(study.prompts.length + 1, 1),
+              }}
+              onSubmit={async (values) => {
+                await savePrompt.mutateAsync({
+                  id: editingPrompt?.id,
+                  ...values,
+                });
+                setPromptDialogOpen(false);
+                setEditingPrompt(null);
+              }}
+            />
+          </div>
+        ) : null}
+
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {study.prompts.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 p-6 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
@@ -574,31 +619,6 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
               });
               setTaskDialogOpen(false);
               setEditingTask(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen}>
-        <DialogContent className="max-w-2xl border border-white/10 bg-popover">
-          <DialogHeader>
-            <DialogTitle>
-              {editingPrompt ? "Edit study prompt" : "Add study prompt"}
-            </DialogTitle>
-          </DialogHeader>
-          <StudyAIPromptForm
-            defaultValues={{
-              label: editingPrompt?.label ?? "",
-              prompt: editingPrompt?.prompt ?? "",
-              position: editingPrompt?.position ?? Math.max(study.prompts.length + 1, 1),
-            }}
-            onSubmit={async (values) => {
-              await savePrompt.mutateAsync({
-                id: editingPrompt?.id,
-                ...values,
-              });
-              setPromptDialogOpen(false);
-              setEditingPrompt(null);
             }}
           />
         </DialogContent>
