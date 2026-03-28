@@ -1,6 +1,6 @@
 import { HabitsClient } from "./page-client";
 
-import { getHabitsPageData } from "@/lib/queries";
+import { getHabitsPageData } from "@/lib/server-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";

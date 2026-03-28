@@ -6,7 +6,17 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
-export default async function AuthPage() {
+type AuthPageProps = {
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+function getSearchParam(
+  value: string | string[] | undefined
+) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function AuthPage({ searchParams }: AuthPageProps) {
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const {
@@ -18,5 +28,13 @@ export default async function AuthPage() {
     }
   }
 
-  return <AuthPanel />;
+  const errorCode = getSearchParam(searchParams?.error_code);
+  const errorDescription = getSearchParam(searchParams?.error_description);
+
+  return (
+    <AuthPanel
+      authErrorCode={errorCode}
+      authErrorMessage={errorDescription}
+    />
+  );
 }

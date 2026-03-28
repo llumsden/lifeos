@@ -1,6 +1,6 @@
 import { FinanceClient } from "./page-client";
 
-import { getFinancePageData } from "@/lib/queries";
+import { getFinancePageData } from "@/lib/server-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";

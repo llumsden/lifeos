@@ -1,6 +1,6 @@
 import { StudyClient } from "./page-client";
 
-import { getStudyPageData } from "@/lib/queries";
+import { getStudyPageData } from "@/lib/server-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";

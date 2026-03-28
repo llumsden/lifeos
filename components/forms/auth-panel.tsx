@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import { LogIn, MailCheck, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -22,9 +22,31 @@ import {
   type MagicLinkValues,
 } from "@/lib/validators";
 
-export function AuthPanel() {
+type AuthPanelProps = {
+  authErrorCode?: string;
+  authErrorMessage?: string;
+};
+
+export function AuthPanel({
+  authErrorCode,
+  authErrorMessage,
+}: AuthPanelProps) {
   const router = useRouter();
   const [mode, setMode] = useState<"sign_in" | "sign_up">("sign_in");
+
+  const getRedirectUrl = () => {
+    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+
+    if (configuredSiteUrl) {
+      return `${configuredSiteUrl}/auth/callback`;
+    }
+
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/auth/callback`;
+    }
+
+    return "/auth/callback";
+  };
 
   const passwordForm = useForm<AuthPasswordValues>({
     resolver: zodResolver(authPasswordSchema),
@@ -41,6 +63,12 @@ export function AuthPanel() {
     },
   });
 
+  useEffect(() => {
+    if (authErrorMessage) {
+      toast.error(authErrorMessage);
+    }
+  }, [authErrorMessage]);
+
   const onSubmitPassword = passwordForm.handleSubmit(async (values) => {
     if (!isSupabaseConfigured()) {
       toast.error("Add Supabase environment variables before signing in.");
@@ -48,34 +76,49 @@ export function AuthPanel() {
     }
 
     const supabase = createSupabaseBrowserClient();
-    const authMethod =
-      mode === "sign_in"
-        ? supabase.auth.signInWithPassword({
-            email: values.email,
-            password: values.password,
-          })
-        : supabase.auth.signUp({
-            email: values.email,
-            password: values.password,
-            options: {
-              emailRedirectTo: `${window.location.origin}/auth/callback`,
-            },
-          });
+    if (mode === "sign_in") {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
 
-    const { error } = await authMethod;
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.success("Signed in. Loading your dashboard...");
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.password,
+      options: {
+        emailRedirectTo: getRedirectUrl(),
+      },
+    });
 
     if (error) {
       toast.error(error.message);
       return;
     }
 
-    toast.success(
-      mode === "sign_in"
-        ? "Signed in. Loading your dashboard..."
-        : "Account created. Check your email if confirmation is enabled."
-    );
-    router.push("/dashboard");
-    router.refresh();
+    if (data.session) {
+      toast.success("Account created. Loading your dashboard...");
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    toast.success("Account created. Check your email to confirm your account.");
+    setMode("sign_in");
+    passwordForm.reset({
+      email: values.email,
+      password: "",
+    });
   });
 
   const onSubmitMagicLink = magicLinkForm.handleSubmit(async (values) => {
@@ -88,7 +131,7 @@ export function AuthPanel() {
     const { error } = await supabase.auth.signInWithOtp({
       email: values.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: getRedirectUrl(),
       },
     });
 
@@ -120,6 +163,22 @@ export function AuthPanel() {
             calm place.
           </p>
         </div>
+
+        {authErrorMessage ? (
+          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            <p className="font-medium text-red-100">
+              {authErrorCode === "otp_expired"
+                ? "That email link has expired or has already been used."
+                : "We couldn't complete that email sign-in link."}
+            </p>
+            <p className="mt-1 text-red-200/80">{authErrorMessage}</p>
+            {authErrorCode === "otp_expired" ? (
+              <p className="mt-1 text-red-200/80">
+                Request a fresh confirmation or magic link and use the newest email.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mb-6 inline-flex rounded-full border border-white/10 bg-black/20 p-1">
           <button

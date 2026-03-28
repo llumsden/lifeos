@@ -1,6 +1,6 @@
 import { DashboardClient } from "./page-client";
 
-import { getDashboardPageData } from "@/lib/queries";
+import { getDashboardPageData } from "@/lib/server-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";

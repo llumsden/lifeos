@@ -6,10 +6,16 @@ import { SidebarNav } from "./sidebar-nav";
 interface AppShellProps {
   userId: string;
   userEmail?: string | null;
+  showSundayReviewPrompt?: boolean;
   children: React.ReactNode;
 }
 
-export function AppShell({ userId, userEmail, children }: AppShellProps) {
+export function AppShell({
+  userId,
+  userEmail,
+  showSundayReviewPrompt = true,
+  children,
+}: AppShellProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="flex min-h-screen">
@@ -24,7 +30,7 @@ export function AppShell({ userId, userEmail, children }: AppShellProps) {
           </div>
         </div>
       </div>
-      <SundayReviewPrompt userId={userId} />
+      {showSundayReviewPrompt ? <SundayReviewPrompt userId={userId} /> : null}
     </div>
   );
 }

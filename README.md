@@ -35,6 +35,7 @@ npm install
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 3. Apply the database schema.
@@ -51,9 +52,12 @@ If you are targeting a hosted Supabase project without a linked local setup, run
 
 Run `supabase/seed.sql` in the Supabase SQL editor, or use `psql` against your project database URL.
 
-5. In Supabase Auth settings, add your local redirect URL:
+5. In Supabase Auth settings, set your Site URL and add your local redirect URL:
 
+- Site URL: `http://localhost:3000`
 - `http://localhost:3000/auth/callback`
+
+If you also use `127.0.0.1` locally, add `http://127.0.0.1:3000/auth/callback` too.
 
 6. Start the app:
 

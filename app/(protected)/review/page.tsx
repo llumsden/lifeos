@@ -1,6 +1,6 @@
 import { ReviewClient } from "./page-client";
 
-import { getReviewPageData } from "@/lib/queries";
+import { getReviewPageData } from "@/lib/server-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
