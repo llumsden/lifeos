@@ -1,0 +1,19 @@
+import { StudyClient } from "./page-client";
+
+import { getStudyPageData } from "@/lib/queries";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+
+export const dynamic = "force-dynamic";
+
+export default async function StudyPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const initialData = await getStudyPageData(supabase, user.id);
+
+  return <StudyClient userId={user.id} initialData={initialData} />;
+}

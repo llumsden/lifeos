@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Life OS
 
-## Getting Started
+Premium personal dashboard web app built with Next.js 14, Supabase, Tailwind, shadcn/ui, TanStack Query, Zustand, Recharts, and Framer Motion.
 
-First, run the development server:
+## Stack
+
+- Next.js 14 App Router
+- TypeScript
+- Supabase Auth + Postgres + Realtime
+- Tailwind CSS + shadcn/ui
+- TanStack Query + Zustand
+- React Hook Form + Zod
+- Recharts + Framer Motion
+
+## Features
+
+- `/dashboard`: greeting, interview countdown, today's schedule, quick-log habits, streaks, rotating quote banner
+- `/study`: Jane Street prep board, study session log + chart, uni catch-up kanban
+- `/training`: climbing log, gym log, workout templates, weekly schedule, overload nudges
+- `/finance`: weekly budget, expenses, manual income, tutoring tracker, monthly chart
+- `/habits`: daily six-habit checklist, 12-month heatmap, weekly review flow
+- `/review`: journal-style weekly review archive
+- `/auth`: email/password and magic-link auth
+
+## Setup
+
+1. Clone and install:
+
+```bash
+npm install
+```
+
+2. Create `.env.local` from `.env.example` and add:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+3. Apply the database schema.
+
+If you use the Supabase CLI:
+
+```bash
+npx supabase db push
+```
+
+If you are targeting a hosted Supabase project without a linked local setup, run `supabase/migrations/001_init.sql` in the Supabase SQL editor.
+
+4. Seed the default reference data.
+
+Run `supabase/seed.sql` in the Supabase SQL editor, or use `psql` against your project database URL.
+
+5. In Supabase Auth settings, add your local redirect URL:
+
+- `http://localhost:3000/auth/callback`
+
+6. Start the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase notes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- All user-owned rows are scoped by `auth.uid()` via RLS.
+- `bootstrap_user_defaults(user_id uuid)` creates starter data for a new authenticated user.
+- An `auth.users` trigger calls the bootstrap function automatically on sign-up.
+- `seed.sql` seeds reference/template tables only; user-specific rows are copied from those defaults at bootstrap time.
 
-## Learn More
+## Deployment
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploy to Vercel with the environment variables from `.env.example` or the placeholders in `vercel.json`.
