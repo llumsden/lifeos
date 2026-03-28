@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CLIMBING_POWER_PLAN, CLIMBING_POWER_RULES } from "@/lib/constants";
 import {
   useDeleteScheduleTemplate,
   useSaveClimbingSession,
@@ -180,6 +181,68 @@ export function TrainingClient({
           <GradeTrendChart sessions={training.climbingSessions} />
         </SectionCard>
       </div>
+
+      <SectionCard
+        title="7-day power plan"
+        description="A force-velocity block biased hard toward explosiveness, motor-unit recruitment, and clean rate of force development."
+      >
+        <div className="grid gap-4 lg:grid-cols-[0.9fr,1.1fr]">
+          <div className="space-y-3">
+            <div className="rounded-3xl border border-indigo-500/15 bg-indigo-500/8 p-4">
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-indigo-200/80">
+                Intent
+              </p>
+              <p className="mt-2 text-sm leading-7 text-white">
+                Shift the curve toward the extreme left of the force-velocity continuum.
+                This block is about explosive output, high-threshold recruitment, and
+                brutal honesty with recovery.
+              </p>
+            </div>
+
+            {CLIMBING_POWER_RULES.map((rule) => (
+              <div
+                key={rule.title}
+                className="rounded-3xl border border-white/6 bg-white/[0.02] p-4"
+              >
+                <p className="font-mono text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  {rule.title}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-white">{rule.description}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3">
+            {CLIMBING_POWER_PLAN.map((day) => (
+              <div
+                key={day.day}
+                className="rounded-3xl border border-white/6 bg-white/[0.02] p-4"
+              >
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="font-mono text-xs uppercase tracking-[0.24em] text-indigo-200/80">
+                    {day.day}
+                  </p>
+                  <div className="rounded-full border border-white/8 bg-black/20 px-3 py-1 text-xs text-muted-foreground">
+                    {day.subtitle}
+                  </div>
+                </div>
+                <h3 className="mt-3 text-lg font-semibold text-white">{day.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">{day.job}</p>
+                <div className="mt-4 space-y-2">
+                  {day.blocks.map((block) => (
+                    <div
+                      key={block}
+                      className="rounded-2xl border border-white/6 bg-black/20 px-3 py-3 text-sm leading-6 text-white"
+                    >
+                      {block}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
 
       <div className="grid gap-6 xl:grid-cols-[1fr,1fr]">
         <SectionCard
@@ -382,7 +445,7 @@ export function TrainingClient({
       </div>
 
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-        <DialogContent className="max-w-3xl border border-white/10 bg-[#121212]">
+        <DialogContent className="max-w-3xl border border-white/10 bg-popover">
           <DialogHeader>
             <DialogTitle>
               {editingTemplate ? "Edit workout template" : "Add workout template"}
@@ -415,7 +478,7 @@ export function TrainingClient({
       </Dialog>
 
       <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
-        <DialogContent className="max-w-xl border border-white/10 bg-[#121212]">
+        <DialogContent className="max-w-xl border border-white/10 bg-popover">
           <DialogHeader>
             <DialogTitle>
               {editingSchedule ? "Edit training slot" : "Add training slot"}

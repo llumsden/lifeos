@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useUIStore } from "@/hooks/use-ui-store";
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn, formatDateLabel } from "@/lib/utils";
@@ -17,7 +18,7 @@ export function MobileNav() {
 
   return (
     <>
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/6 bg-[#0f0f0f]/90 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/6 bg-white/80 px-4 py-3 backdrop-blur dark:bg-[#0f0f0f]/90 lg:hidden">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
             Life OS
@@ -43,10 +44,10 @@ export function MobileNav() {
           >
             <motion.div
               initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 280, damping: 32 }}
-              className="ml-auto flex h-full w-72 flex-col border-l border-white/10 bg-[#101010] p-5"
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", stiffness: 280, damping: 32 }}
+              className="ml-auto flex h-full w-72 flex-col border-l border-white/10 bg-white p-5 dark:bg-[#101010]"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -85,6 +86,10 @@ export function MobileNav() {
                   );
                 })}
               </nav>
+
+              <div className="mt-auto pt-6">
+                <ThemeToggle />
+              </div>
             </motion.div>
           </motion.div>
         ) : null}

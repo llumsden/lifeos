@@ -1,12 +1,15 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { CheckCircle2, Copy, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { SectionCard } from "@/components/cards/section-card";
 import { StatCard } from "@/components/cards/stat-card";
 import { StudyMinutesChart } from "@/components/charts/study-minutes-chart";
+import { StudyAIPromptForm } from "@/components/forms/study-ai-prompt-form";
 import { StudySessionForm } from "@/components/forms/study-session-form";
+import { StudyTaskForm } from "@/components/forms/study-task-form";
 import { TopicEditorForm } from "@/components/forms/topic-editor-form";
 import { UniSubjectForm } from "@/components/forms/uni-subject-form";
 import { PageHeader } from "@/components/layout/page-header";
@@ -21,13 +24,27 @@ import {
 import { Progress } from "@/components/ui/progress";
 import {
   queryKeys,
+  useDeleteStudyPrompt,
+  useDeleteStudyTask,
+  useSaveStudyPrompt,
   useSaveStudySession,
+  useSaveStudyTask,
   useSaveUniSubject,
   useStudyData,
+  useToggleStudyTask,
   useUpdateJaneStreetTopic,
 } from "@/lib/queries";
-import { calculateCountdownDays, getStudyProgress, formatDateLabel } from "@/lib/utils";
-import type { StudyPageData, UniSubjectRow } from "@/types";
+import {
+  calculateCountdownDays,
+  formatDateLabel,
+  getStudyProgress,
+} from "@/lib/utils";
+import type {
+  StudyAIPromptRow,
+  StudyPageData,
+  StudyTaskRow,
+  UniSubjectRow,
+} from "@/types";
 
 interface StudyClientProps {
   userId: string;
@@ -40,11 +57,23 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
   const saveSession = useSaveStudySession(userId);
   const updateTopic = useUpdateJaneStreetTopic(userId);
   const saveSubject = useSaveUniSubject(userId);
+  const saveTask = useSaveStudyTask(userId);
+  const toggleTask = useToggleStudyTask(userId);
+  const deleteTask = useDeleteStudyTask(userId);
+  const savePrompt = useSaveStudyPrompt(userId);
+  const deletePrompt = useDeleteStudyPrompt(userId);
+
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<UniSubjectRow | null>(null);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<StudyTaskRow | null>(null);
+  const [taskSubjectId, setTaskSubjectId] = useState<string>("");
+  const [promptDialogOpen, setPromptDialogOpen] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState<StudyAIPromptRow | null>(null);
 
   const progress = getStudyProgress(study.topics);
   const countdownDays = calculateCountdownDays();
+
   const groupedTopics = useMemo(() => {
     return study.topics.reduce<Record<number, typeof study.topics>>((acc, topic) => {
       acc[topic.week] = [...(acc[topic.week] ?? []), topic];
@@ -73,18 +102,33 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
     [study.subjects]
   );
 
+  const tasksBySubject = useMemo(() => {
+    return study.tasks.reduce<Record<string, StudyTaskRow[]>>((acc, task) => {
+      acc[task.subject_id] = [...(acc[task.subject_id] ?? []), task];
+      return acc;
+    }, {});
+  }, [study.tasks]);
+
+  const scheduledTasksCount = study.tasks.filter((task) => Boolean(task.scheduled_for)).length;
+
   return (
     <div className="space-y-8">
       <RealtimeQuerySync
         userId={userId}
-        tables={["jane_street_topics", "study_sessions", "uni_subjects"]}
-        queryKeys={[queryKeys.study(userId)]}
+        tables={[
+          "jane_street_topics",
+          "study_sessions",
+          "uni_subjects",
+          "study_tasks",
+          "study_ai_prompts",
+        ]}
+        queryKeys={[queryKeys.study(userId), queryKeys.dashboard(userId)]}
       />
 
       <PageHeader
         eyebrow="Study"
         title="Prep the interview, then clean up uni."
-        description="Jane Street prep stays focused and measurable while the uni backlog gets pushed through a calm kanban flow."
+        description="Jane Street prep stays focused and measurable while the uni backlog, task lists, and AI prompt library stay in one calm workflow."
         action={
           <Button
             variant="outline"
@@ -99,7 +143,7 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           label="Interview countdown"
           value={`${countdownDays} days`}
@@ -113,12 +157,94 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
           accent="success"
         />
         <StatCard
-          label="Recent study sessions"
-          value={`${study.sessions.length}`}
-          caption="Tracked sessions across the recent sprint window."
+          label="Active subject tasks"
+          value={`${study.tasks.filter((task) => !task.completed).length}`}
+          caption="Open task count across all uni subjects."
           accent="warning"
         />
+        <StatCard
+          label="Scheduled on dashboard"
+          value={`${scheduledTasksCount}`}
+          caption="Study tasks with a date that can surface in the dashboard timetable."
+          accent="neutral"
+        />
       </div>
+
+      <SectionCard
+        title="AI prompt shelf"
+        description="Keep reusable prompts as one-click copy buttons for worked examples, summaries, or practice sets."
+        action={
+          <Button
+            variant="outline"
+            onClick={() => {
+              setEditingPrompt(null);
+              setPromptDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-2 size-4" />
+            Add prompt
+          </Button>
+        }
+      >
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {study.prompts.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/10 p-6 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
+              No prompt buttons yet. Add the ones you want to reuse the most.
+            </div>
+          ) : (
+            study.prompts.map((prompt) => (
+              <div
+                key={prompt.id}
+                className="rounded-3xl border border-white/6 bg-white/[0.02] p-4"
+              >
+                <p className="font-mono text-xs uppercase tracking-[0.24em] text-indigo-200/80">
+                  Prompt button
+                </p>
+                <h3 className="mt-2 text-base font-medium text-white">{prompt.label}</h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {prompt.prompt.length > 180
+                    ? `${prompt.prompt.slice(0, 180)}...`
+                    : prompt.prompt}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      if (!navigator.clipboard) {
+                        toast.error("Clipboard access is not available here.");
+                        return;
+                      }
+
+                      await navigator.clipboard.writeText(prompt.prompt);
+                      toast.success(`Copied "${prompt.label}"`);
+                    }}
+                  >
+                    <Copy className="mr-2 size-4" />
+                    Copy prompt
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingPrompt(prompt);
+                      setPromptDialogOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deletePrompt.mutate(prompt.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </SectionCard>
 
       <SectionCard
         title="Jane Street prep tracker"
@@ -126,9 +252,7 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Overall completion
-            </p>
+            <p className="text-sm text-muted-foreground">Overall completion</p>
             <p className="mono-numeric text-sm text-white">{progress}%</p>
           </div>
           <Progress value={progress} className="h-3 bg-white/5" />
@@ -141,9 +265,7 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
                 <p className="font-mono text-xs uppercase tracking-[0.28em] text-indigo-200/80">
                   Week {week}
                 </p>
-                <h3 className="mt-2 text-lg font-semibold text-white">
-                  Focus stack
-                </h3>
+                <h3 className="mt-2 text-lg font-semibold text-white">Focus stack</h3>
               </div>
 
               {topics.map((topic) => (
@@ -245,7 +367,7 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
 
       <SectionCard
         title="Uni catch-up tracker"
-        description="Kanban-style columns for your subjects, with inline editing via cards."
+        description="Each subject now carries its own editable task list and schedule metadata for the dashboard timetable."
       >
         <div className="grid gap-6 xl:grid-cols-3">
           {kanbanColumns.map((column) => (
@@ -282,14 +404,113 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
                       Edit
                     </Button>
                   </div>
+
                   {subject.notes ? (
                     <p className="mt-3 text-sm text-muted-foreground">{subject.notes}</p>
                   ) : null}
+
                   {subject.last_reviewed ? (
                     <p className="mt-3 font-mono text-xs uppercase tracking-[0.24em] text-muted-foreground">
                       Last reviewed {formatDateLabel(subject.last_reviewed, "d MMM")}
                     </p>
                   ) : null}
+
+                  <div className="mt-4 space-y-2 rounded-2xl border border-white/6 bg-black/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                        Task list
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingTask(null);
+                          setTaskSubjectId(subject.id);
+                          setTaskDialogOpen(true);
+                        }}
+                      >
+                        <Plus className="mr-2 size-4" />
+                        Add task
+                      </Button>
+                    </div>
+
+                    {(tasksBySubject[subject.id] ?? []).length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No tasks yet for this subject.
+                      </p>
+                    ) : (
+                      (tasksBySubject[subject.id] ?? []).map((task) => (
+                        <div
+                          key={task.id}
+                          className="rounded-2xl border border-white/6 bg-white/[0.03] px-3 py-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <button
+                              type="button"
+                              className="flex flex-1 items-start gap-3 text-left"
+                              onClick={() =>
+                                toggleTask.mutate({
+                                  id: task.id,
+                                  completed: !task.completed,
+                                })
+                              }
+                            >
+                              <CheckCircle2
+                                className={`mt-0.5 size-4 ${
+                                  task.completed
+                                    ? "text-emerald-400"
+                                    : "text-muted-foreground"
+                                }`}
+                              />
+                              <div>
+                                <p
+                                  className={`text-sm ${
+                                    task.completed
+                                      ? "text-muted-foreground line-through"
+                                      : "text-white"
+                                  }`}
+                                >
+                                  {task.title}
+                                </p>
+                                {(task.scheduled_for || task.time_label) ? (
+                                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.22em] text-indigo-200/80">
+                                    {[task.scheduled_for, task.time_label]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </p>
+                                ) : null}
+                                {task.details ? (
+                                  <p className="mt-2 text-sm text-muted-foreground">
+                                    {task.details}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </button>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingTask(task);
+                                  setTaskSubjectId(subject.id);
+                                  setTaskDialogOpen(true);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteTask.mutate(task.id)}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -298,7 +519,7 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
       </SectionCard>
 
       <Dialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen}>
-        <DialogContent className="max-w-xl border border-white/10 bg-[#121212]">
+        <DialogContent className="max-w-xl border border-white/10 bg-popover">
           <DialogHeader>
             <DialogTitle>
               {editingSubject ? "Edit subject" : "Add subject"}
@@ -319,6 +540,65 @@ export function StudyClient({ userId, initialData }: StudyClientProps) {
               });
               setSubjectDialogOpen(false);
               setEditingSubject(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+        <DialogContent className="max-w-xl border border-white/10 bg-popover">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTask ? "Edit subject task" : "Add subject task"}
+            </DialogTitle>
+          </DialogHeader>
+          <StudyTaskForm
+            defaultValues={{
+              subject_id:
+                editingTask?.subject_id ?? taskSubjectId ?? study.subjects[0]?.id ?? "",
+              title: editingTask?.title ?? "",
+              details: editingTask?.details ?? "",
+              completed: editingTask?.completed ?? false,
+              scheduled_for: editingTask?.scheduled_for ?? study.today,
+              time_label: editingTask?.time_label ?? "",
+              position: editingTask?.position ?? Math.max(study.tasks.length + 1, 1),
+            }}
+            subjectOptions={study.subjects.map((subject) => ({
+              id: subject.id,
+              name: subject.name,
+            }))}
+            onSubmit={async (values) => {
+              await saveTask.mutateAsync({
+                id: editingTask?.id,
+                ...values,
+              });
+              setTaskDialogOpen(false);
+              setEditingTask(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen}>
+        <DialogContent className="max-w-2xl border border-white/10 bg-popover">
+          <DialogHeader>
+            <DialogTitle>
+              {editingPrompt ? "Edit study prompt" : "Add study prompt"}
+            </DialogTitle>
+          </DialogHeader>
+          <StudyAIPromptForm
+            defaultValues={{
+              label: editingPrompt?.label ?? "",
+              prompt: editingPrompt?.prompt ?? "",
+              position: editingPrompt?.position ?? Math.max(study.prompts.length + 1, 1),
+            }}
+            onSubmit={async (values) => {
+              await savePrompt.mutateAsync({
+                id: editingPrompt?.id,
+                ...values,
+              });
+              setPromptDialogOpen(false);
+              setEditingPrompt(null);
             }}
           />
         </DialogContent>

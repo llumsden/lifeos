@@ -14,6 +14,7 @@ import {
 
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 const iconMap = {
   "/dashboard": LayoutDashboard,
@@ -32,7 +33,7 @@ export function SidebarNav({ userEmail }: SidebarNavProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-72 border-r border-white/6 bg-[#0f0f0f]/90 px-5 py-6 backdrop-blur lg:flex lg:flex-col">
+    <aside className="hidden w-72 border-r border-white/6 bg-white/80 px-5 py-6 backdrop-blur dark:bg-[#0f0f0f]/90 lg:flex lg:flex-col">
       <div className="flex items-center gap-3 px-2">
         <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-3 text-indigo-200">
           <PanelLeftClose className="size-5" />
@@ -68,7 +69,7 @@ export function SidebarNav({ userEmail }: SidebarNavProps) {
         })}
       </nav>
 
-      <div className="rounded-2xl border border-white/6 bg-white/[0.02] p-4">
+      <div className="space-y-3 rounded-2xl border border-white/6 bg-white/[0.02] p-4">
         <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
           Session
         </p>
@@ -76,6 +77,7 @@ export function SidebarNav({ userEmail }: SidebarNavProps) {
         <p className="mt-1 text-sm text-muted-foreground">
           Premium focus, low noise, clean reps.
         </p>
+        <ThemeToggle />
       </div>
     </aside>
   );

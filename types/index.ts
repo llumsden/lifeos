@@ -89,6 +89,31 @@ export interface UniSubjectRow {
   updated_at: string;
 }
 
+export interface StudyTaskRow {
+  id: string;
+  user_id: string;
+  subject_id: string;
+  subject_name?: string | null;
+  title: string;
+  details: string | null;
+  completed: boolean;
+  scheduled_for: string | null;
+  time_label: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudyAIPromptRow {
+  id: string;
+  user_id: string;
+  label: string;
+  prompt: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ClimbingSessionRow {
   id: string;
   user_id: string;
@@ -207,6 +232,7 @@ export interface DashboardPageData {
   quotes: MotivationalQuoteRow[];
   profile: UserProfileRow | null;
   schedule: WeeklyScheduleTemplateRow[];
+  studyTasks: StudyTaskRow[];
   habitLogs: HabitLogRow[];
   streaks: Record<HabitKey, number>;
 }
@@ -216,6 +242,8 @@ export interface StudyPageData {
   topics: JaneStreetTopicRow[];
   sessions: StudySessionRow[];
   subjects: UniSubjectRow[];
+  tasks: StudyTaskRow[];
+  prompts: StudyAIPromptRow[];
 }
 
 export interface TrainingPageData {

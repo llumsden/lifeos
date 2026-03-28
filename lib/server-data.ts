@@ -21,8 +21,10 @@ import type {
   JaneStreetTopicRow,
   MotivationalQuoteRow,
   ReviewPageData,
+  StudyAIPromptRow,
   StudyPageData,
   StudySessionRow,
+  StudyTaskRow,
   TrainingPageData,
   TutoringSessionRow,
   UniSubjectRow,
@@ -159,6 +161,31 @@ async function fetchStudySessions(client: Client, userId: string, daysBack = 60)
   );
 }
 
+async function fetchStudyTasks(client: Client, userId: string) {
+  return maybeMany<StudyTaskRow>(
+    client
+      .from("study_tasks")
+      .select("*")
+      .eq("user_id", userId)
+      .order("completed", { ascending: true })
+      .order("scheduled_for", { ascending: true, nullsFirst: false })
+      .order("time_label", { ascending: true, nullsFirst: false })
+      .order("position", { ascending: true })
+      .order("updated_at", { ascending: false })
+  );
+}
+
+async function fetchStudyAIPrompts(client: Client, userId: string) {
+  return maybeMany<StudyAIPromptRow>(
+    client
+      .from("study_ai_prompts")
+      .select("*")
+      .eq("user_id", userId)
+      .order("position", { ascending: true })
+      .order("updated_at", { ascending: false })
+  );
+}
+
 async function fetchJaneStreetTopics(client: Client, userId: string) {
   return maybeMany<JaneStreetTopicRow>(
     client
@@ -277,12 +304,22 @@ export async function getDashboardPageData(client: Client, userId: string) {
   const today = getTodayISO();
   const weekday = new Date().getDay();
 
-  const [profile, quotes, schedule, habitLogs] = await Promise.all([
+  const [profile, quotes, schedule, habitLogs, subjects, tasks] = await Promise.all([
     fetchProfile(client, userId),
     fetchQuotes(client, userId),
     fetchSchedule(client, userId, "dashboard", weekday),
     fetchHabitLogs(client, userId, 90),
+    fetchUniSubjects(client, userId),
+    fetchStudyTasks(client, userId),
   ]);
+
+  const subjectNameMap = new Map(subjects.map((subject) => [subject.id, subject.name]));
+  const todaysStudyTasks = tasks
+    .filter((task) => task.scheduled_for === today)
+    .map((task) => ({
+      ...task,
+      subject_name: subjectNameMap.get(task.subject_id) ?? null,
+    }));
 
   return {
     today,
@@ -290,23 +327,34 @@ export async function getDashboardPageData(client: Client, userId: string) {
     quotes,
     profile,
     schedule,
+    studyTasks: todaysStudyTasks,
     habitLogs,
     streaks: calculateHabitStreaks(habitLogs),
   } satisfies DashboardPageData;
 }
 
 export async function getStudyPageData(client: Client, userId: string) {
-  const [topics, sessions, subjects] = await Promise.all([
+  const [topics, sessions, subjects, tasks, prompts] = await Promise.all([
     fetchJaneStreetTopics(client, userId),
     fetchStudySessions(client, userId),
     fetchUniSubjects(client, userId),
+    fetchStudyTasks(client, userId),
+    fetchStudyAIPrompts(client, userId),
   ]);
+
+  const subjectNameMap = new Map(subjects.map((subject) => [subject.id, subject.name]));
+  const enrichedTasks = tasks.map((task) => ({
+    ...task,
+    subject_name: subjectNameMap.get(task.subject_id) ?? null,
+  }));
 
   return {
     today: getTodayISO(),
     topics,
     sessions,
     subjects,
+    tasks: enrichedTasks,
+    prompts,
   } satisfies StudyPageData;
 }
 

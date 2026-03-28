@@ -18,7 +18,7 @@ const accentClasses: Record<NonNullable<StatCardProps["accent"]>, string> = {
   primary: "from-indigo-500/25 to-transparent",
   success: "from-emerald-500/20 to-transparent",
   warning: "from-amber-500/20 to-transparent",
-  neutral: "from-white/5 to-transparent",
+  neutral: "from-slate-400/10 to-transparent dark:from-white/5",
 };
 
 export function StatCard({
@@ -32,7 +32,7 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        "relative overflow-hidden border border-white/6 bg-white/[0.02] ring-0",
+        "relative overflow-hidden border border-white/6 bg-white/[0.02] ring-0 shadow-[0_18px_40px_rgba(15,23,42,0.06)] dark:shadow-none",
         className
       )}
     >

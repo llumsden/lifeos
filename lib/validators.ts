@@ -42,6 +42,22 @@ export const uniSubjectSchema = z.object({
   last_reviewed: z.string().optional().nullable(),
 });
 
+export const studyTaskSchema = z.object({
+  subject_id: z.string().min(1, "Choose a subject."),
+  title: z.string().min(1, "Task title is required."),
+  details: z.string().max(4000).optional().nullable(),
+  completed: z.boolean(),
+  scheduled_for: z.string().optional().nullable(),
+  time_label: z.string().max(40).optional().nullable(),
+  position: z.coerce.number().int().min(1).max(999),
+});
+
+export const studyPromptSchema = z.object({
+  label: z.string().min(1, "Prompt label is required.").max(120),
+  prompt: z.string().min(1, "Prompt copy is required.").max(8000),
+  position: z.coerce.number().int().min(1).max(999),
+});
+
 export const climbingSessionSchema = z.object({
   date: z.string().min(1),
   session_type: z.enum(CLIMBING_SESSION_TYPES),
@@ -142,6 +158,8 @@ export type MagicLinkValues = z.infer<typeof magicLinkSchema>;
 export type TopicUpdateValues = z.infer<typeof topicUpdateSchema>;
 export type StudySessionValues = z.infer<typeof studySessionSchema>;
 export type UniSubjectValues = z.infer<typeof uniSubjectSchema>;
+export type StudyTaskValues = z.infer<typeof studyTaskSchema>;
+export type StudyPromptValues = z.infer<typeof studyPromptSchema>;
 export type ClimbingSessionValues = z.infer<typeof climbingSessionSchema>;
 export type GymSessionValues = z.infer<typeof gymSessionSchema>;
 export type WorkoutTemplateValues = z.infer<typeof workoutTemplateSchema>;

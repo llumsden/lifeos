@@ -4,11 +4,9 @@ import { Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { HabitRingCard } from "@/components/cards/habit-ring-card";
-import { QuoteRotator } from "@/components/cards/quote-rotator";
 import { SectionCard } from "@/components/cards/section-card";
 import { StatCard } from "@/components/cards/stat-card";
 import { HabitChecklistForm } from "@/components/forms/habit-checklist-form";
-import { QuoteForm } from "@/components/forms/quote-form";
 import { ScheduleItemForm } from "@/components/forms/schedule-item-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { RealtimeQuerySync } from "@/components/providers/realtime-query-sync";
@@ -22,11 +20,9 @@ import {
 import { CORE_HABITS, JANE_STREET_TARGET_DATE } from "@/lib/constants";
 import {
   useDashboardData,
-  useDeleteQuote,
   useDeleteScheduleTemplate,
   useQuickLogHabits,
   useSaveHabitChecklist,
-  useSaveQuote,
   useSaveScheduleTemplate,
 } from "@/lib/queries";
 import {
@@ -36,7 +32,7 @@ import {
   getGreeting,
   getHabitCompletionMap,
 } from "@/lib/utils";
-import type { DashboardPageData, MotivationalQuoteRow, WeeklyScheduleTemplateRow } from "@/types";
+import type { DashboardPageData, WeeklyScheduleTemplateRow } from "@/types";
 
 interface DashboardClientProps {
   userId: string;
@@ -51,13 +47,9 @@ export function DashboardClient({
   const dashboard = data ?? initialData;
   const quickLog = useQuickLogHabits(userId);
   const saveChecklist = useSaveHabitChecklist(userId);
-  const saveQuote = useSaveQuote(userId);
-  const deleteQuote = useDeleteQuote(userId);
   const saveScheduleItem = useSaveScheduleTemplate(userId);
   const deleteScheduleItem = useDeleteScheduleTemplate(userId);
 
-  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
-  const [editingQuote, setEditingQuote] = useState<MotivationalQuoteRow | null>(null);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [editingScheduleItem, setEditingScheduleItem] =
     useState<WeeklyScheduleTemplateRow | null>(null);
@@ -73,12 +65,45 @@ export function DashboardClient({
 
   const countdownDays = calculateCountdownDays();
   const completedToday = Object.values(todayChecklist).filter(Boolean).length - 1;
+  const timetableItems = useMemo(() => {
+    const recurring = dashboard.schedule.map((item) => ({
+      id: item.id,
+      kind: "schedule" as const,
+      title: item.title,
+      details: item.details,
+      timeLabel: item.time_label,
+      meta: item.category ?? "Template block",
+      row: item,
+      position: item.position,
+    }));
+    const studyTasks = dashboard.studyTasks.map((task) => ({
+      id: task.id,
+      kind: "study_task" as const,
+      title: task.title,
+      details: task.details,
+      timeLabel: task.time_label,
+      meta: task.subject_name ? `${task.subject_name} task` : "Study task",
+      row: task,
+      position: task.position,
+    }));
+
+    return [...recurring, ...studyTasks].sort((left, right) => {
+      const leftTime = left.timeLabel ?? "99:99";
+      const rightTime = right.timeLabel ?? "99:99";
+
+      if (leftTime !== rightTime) {
+        return leftTime.localeCompare(rightTime);
+      }
+
+      return left.position - right.position;
+    });
+  }, [dashboard.schedule, dashboard.studyTasks]);
 
   return (
     <div className="space-y-8">
       <RealtimeQuerySync
         userId={userId}
-        tables={["habits_log", "motivational_quotes", "weekly_schedule_templates"]}
+        tables={["habits_log", "weekly_schedule_templates", "study_tasks"]}
         queryKeys={[["dashboard", userId], ["habits", userId]]}
       />
 
@@ -126,14 +151,12 @@ export function DashboardClient({
           accent="neutral"
         />
         <StatCard
-          label="Schedule items"
-          value={`${dashboard.schedule.length}`}
-          caption="Today's template blocks pulled from Supabase."
+          label="Timetable items"
+          value={`${timetableItems.length}`}
+          caption="Recurring schedule blocks plus scheduled study tasks."
           accent="warning"
         />
       </div>
-
-      <QuoteRotator quotes={dashboard.quotes} />
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr,0.95fr]">
         <SectionCard
@@ -166,8 +189,8 @@ export function DashboardClient({
         </SectionCard>
 
         <SectionCard
-          title="Today's schedule"
-          description="Live from your weekly template in Supabase."
+          title="Today's timetable"
+          description="Your recurring schedule plus study tasks scheduled for today."
           action={
             <Button
               variant="outline"
@@ -182,23 +205,26 @@ export function DashboardClient({
           }
         >
           <div className="space-y-3">
-            {dashboard.schedule.length === 0 ? (
+            {timetableItems.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 p-6 text-sm text-muted-foreground">
-                No schedule blocks yet for today.
+                Nothing scheduled for today yet.
               </div>
             ) : (
-              dashboard.schedule.map((item) => (
+              timetableItems.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-start justify-between rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-4"
                 >
                   <div>
                     <p className="font-mono text-xs uppercase tracking-[0.24em] text-indigo-200/80">
-                      {item.time_label ?? "Flexible"}
+                      {item.timeLabel ?? "Flexible"}
                     </p>
                     <h3 className="mt-2 text-base font-medium text-white">
                       {item.title}
                     </h3>
+                    <p className="mt-1 text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                      {item.meta}
+                    </p>
                     {item.details ? (
                       <p className="mt-2 text-sm text-muted-foreground">
                         {item.details}
@@ -206,17 +232,23 @@ export function DashboardClient({
                     ) : null}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditingScheduleItem(item);
-                        setScheduleDialogOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    {!item.id.startsWith("fallback-") ? (
+                    {item.kind === "schedule" ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingScheduleItem(item.row);
+                          setScheduleDialogOpen(true);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    ) : (
+                      <div className="rounded-full border border-emerald-500/15 bg-emerald-500/8 px-3 py-1 text-xs text-emerald-300">
+                        Manage in Study
+                      </div>
+                    )}
+                    {item.kind === "schedule" && !item.id.startsWith("fallback-") ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -255,94 +287,46 @@ export function DashboardClient({
         </SectionCard>
 
         <SectionCard
-          title="Motivational quotes"
-          description="Rotating banner copy stored in the database, editable inline."
-          action={
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditingQuote(null);
-                setQuoteDialogOpen(true);
-              }}
-            >
-              <Plus className="mr-2 size-4" />
-              Add quote
-            </Button>
-          }
+          title="Study queue"
+          description="Tasks scheduled for today so the dashboard doubles as your live timetable."
         >
           <div className="space-y-3">
-            {dashboard.quotes.map((quote) => (
+            {dashboard.studyTasks.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 p-6 text-sm text-muted-foreground">
+                No study tasks are scheduled for today yet.
+              </div>
+            ) : (
+              dashboard.studyTasks.map((task) => (
               <div
-                key={quote.id}
+                key={task.id}
                 className="flex items-start justify-between gap-4 rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-4"
               >
                 <div>
-                  <p className="text-sm leading-6 text-white">“{quote.quote}”</p>
-                  {quote.author ? (
+                  <p className="font-mono text-xs uppercase tracking-[0.24em] text-indigo-200/80">
+                    {task.time_label ?? "Flexible"}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-white">{task.title}</p>
+                  {task.subject_name ? (
                     <p className="mt-2 font-mono text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                      {quote.author}
+                      {task.subject_name}
                     </p>
                   ) : null}
-                </div>
-                <div className="flex items-center gap-2">
-                  {!quote.id.startsWith("fallback-") ? (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingQuote(quote);
-                          setQuoteDialogOpen(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteQuote.mutate(quote.id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </>
+                  {task.details ? (
+                    <p className="mt-2 text-sm text-muted-foreground">{task.details}</p>
                   ) : null}
                 </div>
+                <div className="rounded-full border border-white/8 bg-black/20 px-3 py-1 text-xs text-muted-foreground">
+                  Study
+                </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </SectionCard>
       </div>
 
-      <Dialog open={quoteDialogOpen} onOpenChange={setQuoteDialogOpen}>
-        <DialogContent className="max-w-xl border border-white/10 bg-[#121212]">
-          <DialogHeader>
-            <DialogTitle>
-              {editingQuote ? "Edit motivational quote" : "Add motivational quote"}
-            </DialogTitle>
-          </DialogHeader>
-          <QuoteForm
-            defaultValues={{
-              quote: editingQuote?.quote ?? "",
-              author: editingQuote?.author ?? "",
-              position: editingQuote?.position ?? dashboard.quotes.length + 1,
-            }}
-            onSubmit={async (values) => {
-              await saveQuote.mutateAsync({
-                id: editingQuote?.id,
-                quote: values.quote,
-                author: values.author ?? null,
-                position: values.position,
-                active: true,
-              });
-              setQuoteDialogOpen(false);
-              setEditingQuote(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
-        <DialogContent className="max-w-xl border border-white/10 bg-[#121212]">
+        <DialogContent className="max-w-xl border border-white/10 bg-popover">
           <DialogHeader>
             <DialogTitle>
               {editingScheduleItem ? "Edit schedule block" : "Add schedule block"}

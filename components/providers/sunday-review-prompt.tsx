@@ -38,7 +38,7 @@ export function SundayReviewPrompt({ userId }: SundayReviewPromptProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => setDismissed(!open)}>
-      <DialogContent className="max-w-2xl border border-white/10 bg-[#121212]">
+      <DialogContent className="max-w-2xl border border-white/10 bg-popover">
         <DialogHeader>
           <DialogTitle>Weekly review</DialogTitle>
           <DialogDescription>
